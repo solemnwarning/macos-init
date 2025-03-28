@@ -14,6 +14,9 @@ readonly DEFAULT_USERDATA_MAPPING="
 	users/0/ssh_authorized_keys/*=ADMIN_SSH_KEYS
 	"
 
+# Defaults
+disk_settle_time="10"
+
 . "$(dirname "$0")"/../utils.sh
 . "$MACINIT_CONFIG" || die "Failed to source config $MACINIT_CONFIG"
 
@@ -23,7 +26,7 @@ mount_dir="/Volumes/$cloudinit_volume_label"
 command -v yq >/dev/null || die "yq was not found; install it using 'brew install yq'"
 
 ready() {
-	diskutil list physical "$cloudinit_volume_label" >/dev/null
+	is_stable "$disk_settle_time" diskutil list physical "$cloudinit_volume_label" >/dev/null
 }
 
 read_params() {

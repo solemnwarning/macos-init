@@ -71,11 +71,37 @@ escape_squote() {
 wait_for() {
 	local timeout="$1"; shift
 
-	while [ "$timeout" -gt 0 ]; do
+	local timeout_at="$(( $(get_time_milliseconds) + $(( $timeout * 1000 )) ))"
+
+	while [ "$(get_time_milliseconds)" -lt "$timeout_at" ]; do
 		"$@" && return 0
 		sleep 1
 		timeout="$(( $timeout - 1 ))"
 	done
 
 	return 1
+}
+
+# Executes command $2... repeatedly for steady_time $1 (seconds) and returns
+# zero if it terminates with a zero status every time.
+#
+# NOTE: This is expensive (the command will be executed in a tight loop) and
+# the command must also be idempotent.
+is_stable() {
+	local steady_time="$1"; shift
+
+	local loop_until="$(( $(get_time_milliseconds) + $(( $steady_time * 1000 )) ))"
+
+	while "$@"; do
+		if [ "$(get_time_milliseconds)" -ge "$loop_until" ]; then
+			return 0
+		fi
+	done
+
+	return 1
+}
+
+# Get a monotonically-incrementing timestamp to millisecond precision.
+get_time_milliseconds() {
+	perl -MTime::HiRes -e 'print int(Time::HiRes::clock_gettime(Time::HiRes::CLOCK_MONOTONIC) * 1000), "\n";'
 }

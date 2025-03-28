@@ -19,6 +19,9 @@ readonly ETH_CONTEXT_MAPPING="
 	SEARCH_DOMAIN=DNS_SEARCH
 	"
 
+# Defaults
+disk_settle_time="10"
+
 . "$(dirname "$0")"/../utils.sh
 . "$MACINIT_CONFIG" || die "Failed to source config $MACINIT_CONFIG"
 
@@ -27,7 +30,7 @@ mount_dir="/Volumes/$opennebula_volume_label"
 
 
 ready() {
-	diskutil list physical "$opennebula_volume_label" >/dev/null
+	is_stable "$disk_settle_time" diskutil list physical "$opennebula_volume_label" >/dev/null
 }
 
 read_params() {
