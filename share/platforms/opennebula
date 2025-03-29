@@ -27,12 +27,10 @@ mount_dir="/Volumes/$opennebula_volume_label"
 
 
 ready() {
-	diskutil list physical "$opennebula_volume_label" >/dev/null
+	_ismountpoint "${mount_dir}" && [ "$(echo "${mount_dir}"/*)" != "${mount_dir}/*" ]
 }
 
 read_params() {
-	mount_volume "$opennebula_volume_label" \
-		|| die "Failed to mount volume $opennebula_volume_label"
 	check_context
 
 	set -f  # disable globbing
@@ -52,8 +50,6 @@ read_params() {
 		)" >/dev/null
 		printf "export %s='%s'\n" "$var" "$(escape_squote "$val")"
 	done
-
-	diskutil umount "$opennebula_volume_label" >/dev/null
 }
 
 check_context() {

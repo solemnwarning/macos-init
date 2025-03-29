@@ -23,12 +23,10 @@ mount_dir="/Volumes/$cloudinit_volume_label"
 command -v yq >/dev/null || die "yq was not found; install it using 'brew install yq'"
 
 ready() {
-	diskutil list physical "$cloudinit_volume_label" >/dev/null
+	_ismountpoint "${mount_dir}" && [ "$(echo "${mount_dir}"/*)" != "${mount_dir}/*" ]
 }
 
 read_params() {
-	mount_volume "$cloudinit_volume_label" \
-		|| die "Failed to mount volume $cloudinit_volume_label"
 	check_cidata
 
 	set -f  # disable globbing
@@ -46,8 +44,6 @@ read_params() {
 			printf "export %s='%s'\n" "$var" "$(escape_squote "$val")"
 		fi
 	done
-
-	diskutil umount "$cloudinit_volume_label" >/dev/null
 }
 
 check_cidata() {
