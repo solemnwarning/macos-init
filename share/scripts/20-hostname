@@ -5,12 +5,45 @@ set -eu
 [ "${FQDN-}" ] || [ "${SET_HOSTNAME-}" ] || exit 0
 
 cur_hostname="$(scutil --get HostName)" || :
+cur_localhostname="$(scutil --get LocalHostName)" || :
+cur_computername="$(scutil --get ComputerName)" || :
 
-# Sanitize hostname.
-new_hostname="$(printf '%s\n' "${FQDN:-$SET_HOSTNAME}" \
+# Sanitize hostname (FQDN).
+new_fqdn="$(printf '%s\n' "${FQDN:-$SET_HOSTNAME}" \
 	| sed 's/[^-a-zA-Z0-9\.]/-/g; s/^[.-]*//g; s/[.-]*$//g')"
 
-if [ "$cur_hostname" != "$new_hostname" ]; then
-	echo "Changing hostname from '$cur_hostname' to '$new_hostname'" >&2
-	scutil --set HostName "$new_hostname"
+# Sanitize hostname (short).
+new_hostname="$(printf '%s\n' "${SET_HOSTNAME:-FQDN}" \
+	| sed 's/\..*//g; s/[^-a-zA-Z0-9]/-/g; s/^[.-]*//g; s/[.-]*$//g')"
+
+renew_dhcp=
+
+if [ "$cur_hostname" != "$new_fqdn" ]; then
+	echo "Changing HostName from '$cur_hostname' to '$new_fqdn'" >&2
+	scutil --set HostName "$new_fqdn"
+fi
+
+# LocalHostName is used for Bonjour/Zeroconf.
+if [ "$cur_localhostname" != "$new_hostname" ]; then
+	echo "Changing LocalHostName from '$cur_localhostname' to '$new_hostname'" >&2
+	scutil --set LocalHostName "${new_hostname}"
+fi
+
+# ComputerName is used for DHCP client hostname and in the UI (e.g. in Finder).
+if [ "$cur_computername" != "$new_hostname" ]; then
+	echo "Changing ComputerName from '$cur_computername' to '$new_hostname'" >&2
+	scutil --set ComputerName "${new_hostname}"
+
+	renew_dhcp=yes
+fi
+
+# Renew any active DHCP leases so that hostname changes are propagated to the
+# DHCP server.
+if [ -n "$renew_dhcp" ]
+then
+	for dev in $(ifconfig -au | grep -Ei '^[a-z0-9]+:' | sed -e 's/:.*//g')
+	do
+		echo "Refreshing network configuration on interface $dev" >&2
+		echo "add State:/Network/Interface/${dev}/RefreshConfiguration temporary" | scutil
+	done
 fi
